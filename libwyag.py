@@ -79,7 +79,7 @@ def repo_path(repo, *path):
 
 def repo_file(repo, *path, mkdir=False):
     """Same as repo_path, but create dirname(*path) is absent. For example,
-    repo_file(r, \"refs\" \"remotes\", \"origin\", \"HEAD\") will create
+    repo_file(r, \"refs\", \"remotes\", \"origin\", \"HEAD\") will create
     .git/refs/remotes/origin"""
 
     if repo_dir(repo, *path[:-1], mkdir=mkdir):
@@ -150,7 +150,7 @@ def repo_create(path):
 #                                 If > 1, git panics. wyag will only accept 0.
 # filemode = true               : Disable tracking of file mode changes in the
 #                                 work tree.
-# bare = false                  : Indicates that this repo has a worktree. 
+# bare = false                  : Indicates that this repo has a worktree.
 def repo_default_config():
     ret = configparser.ConfigParser()
 
@@ -160,3 +160,16 @@ def repo_default_config():
     ret.set("core", "bare", "false")
 
     return ret
+
+# Subparser command to handle command argument for `wyag init [path]`
+argsp = argsubparsers.add_parser("init", help="Initialize a new, empty repository.")
+argsp.add_argument("path",
+                   metavar="directory",
+                   nargs="?",
+                   default=".",  # Default path is .
+                   help="Where to create this repository")
+
+# 'Bridge' function that will read argument values from the object returned by
+# argparse and call the actual function with correct values
+def cmd_init(args):
+    repo_create(args.path)
