@@ -226,16 +226,16 @@ class GitObject (object):
     def deserialize(self):
         raise Exception("Unimplemented!")
 
-# To read an object, we need to know its hash. We then compute its path from
-# this hash (first two characters, then a directory delimiter /, then the
-# remaining part) and look it up inside of the “objects” directory in the
+# To read an object, we need to know its hash. The path is computed from this
+# hash (first two characters, then a directory delimiter /, then the
+# remaining part) and used to look it up inside the “objects” directory in the
 # gitdir. For example, the path to e673d1b7eaa0aa01b5bc2442d570a765bdaae751 is
 # .git/objects/e6/73d1b7eaa0aa01b5bc2442d570a765bdaae751
-# We then read that file as a binary file, and decompress it using zlib. From
-# the decompressed data, we extract the two header components: the object type
-# and its size. From the type, we determine the actual class to use. We convert
-# the size to a Python integer, and check if it matches. Then we just call the
-# correct constructor for that object’s format.
+# The file is then read as a binary file, and decompressed using zlib. From
+# the decompressed data, the two header components are extracted: the object type
+# and its size. From the type, the actual class to use is determined. The size
+# is converted to a Python integer, and it's checked if it matches. Then the
+# correct constructor for that object’s format is called.
 def object_read(repo, sha):
     """Read object object_id from Git repository. Return a GitObject whose
     exact type depends on the object."""
@@ -273,3 +273,23 @@ def object_read(repo, sha):
 # other references like short hashes and tags.
 def object_find(repo, name, fmt=None, follow=True):
     return name
+
+# Writing an object is reading in reverse: insert the header, compute the hash,
+# compress everything, and write the result.
+def object_write(obj, actually_write=True):
+    # Serialize object data
+    data = obj.serialize()
+    # Add header
+    result = obj.fmt + b' ' + str(len(data)).encode() + b'\x00' + data
+    # Compute hash
+    sha = hashlib.sha1(result).hexdigest()
+
+    if actually_write:
+        # Compute path
+        path = repo_file(obj.repo, "objects", sha[0:2], sha[2:], mkdir=actually_write)
+
+        with open(path, 'wb') as f:
+            # Compress and write
+            f.write(zlib.compress(result))
+
+    return sha
