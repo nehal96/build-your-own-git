@@ -173,3 +173,29 @@ argsp.add_argument("path",
 # argparse and call the actual function with correct values
 def cmd_init(args):
     repo_create(args.path)
+
+# This function will look for a repository, starting at the current directory
+# and recursing back until '/'. To identify something as a repo, it will look
+# for the presence of a `.git` directory.
+# Almost all git functions, except `init`, use an existing repo, so this
+# function is used for that.
+def repo_find(path=".", required=True):
+    path = os.path.realpath(path)
+
+    if os.path.isdir(os.path.join(path, ".git")):
+        return GitRepository(path)
+
+    # If we haven't returned, recurse in parent, if w
+    parent = os.path.realpath(os.path.join(path, ".."))
+
+    if parent == path:
+        # Bottom case
+        # os.path.join("/", "..") == "/":
+        # If parent == path, then path is root.
+        if required:
+            raise Exception("No git directory.")
+        else:
+            return None
+
+    # Recursive case
+    return repo_find(parent, required)
