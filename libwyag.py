@@ -293,3 +293,17 @@ def object_write(obj, actually_write=True):
             f.write(zlib.compress(result))
 
     return sha
+
+# Of the four Git object types, blobs are the simplest, because they have no
+# actual format. Blobs are user content: every file you put in git is stored as
+# a blob.
+# A GitBlob class has serialize and deserialize functions that just have to
+# store and return their input unmodified.
+class GitBlob(GitObject):
+    fmt = b'blob'
+
+    def serialize(self):
+        return self.blobdata
+
+    def deserialize(self, data):
+        self.blobdata = data
