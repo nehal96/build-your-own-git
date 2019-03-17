@@ -41,7 +41,7 @@ def main(argv=sys.argv[1:]):
 # A git repository is made of 2 things: a "work tree", where the files meant to
 # be in version control live, and a "git directory", where Git stores its own
 # data.
-class GitRepository(object):
+class GitRepository (object):
     """A git repository"""
 
     worktree = None
@@ -199,3 +199,28 @@ def repo_find(path=".", required=True):
 
     # Recursive case
     return repo_find(parent, required)
+
+# At its core, Git is a “content-addressed filesystem”. That means that unlike
+# regular filesystems, where the name of a file is arbitrary and unrelated to
+# that file’s contents, the names of files as stored by Git are mathematically
+# derived from their contents. Git uses objects to store the actual files it
+# keeps in version control (eg. source code), commits, tags, and others.
+class GitObject (object):
+    repo = None
+
+    def __init__(self, repo, data=None):
+        self.repo = repo
+
+        if data != None:
+            self.deserialize(data)
+
+    def serialize(self):
+        """This function must be implemented by subclasses.
+
+        It must read the object's contents from self.data, a byte string, and
+        do whatever it takes to convert it into a meaningful representation.
+        What exactly that means depends on each subclass."""
+        raise Exception("Unimplemented!")
+
+    def deserialize(self):
+        raise Exception("Unimplemented!")
