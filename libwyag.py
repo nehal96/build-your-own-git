@@ -200,6 +200,7 @@ def repo_find(path=".", required=True):
     # Recursive case
     return repo_find(parent, required)
 
+
 # At its core, Git is a “content-addressed filesystem”. That means that unlike
 # regular filesystems, where the name of a file is arbitrary and unrelated to
 # that file’s contents, the names of files as stored by Git are mathematically
@@ -224,3 +225,51 @@ class GitObject (object):
 
     def deserialize(self):
         raise Exception("Unimplemented!")
+
+# To read an object, we need to know its hash. We then compute its path from
+# this hash (first two characters, then a directory delimiter /, then the
+# remaining part) and look it up inside of the “objects” directory in the
+# gitdir. For example, the path to e673d1b7eaa0aa01b5bc2442d570a765bdaae751 is
+# .git/objects/e6/73d1b7eaa0aa01b5bc2442d570a765bdaae751
+# We then read that file as a binary file, and decompress it using zlib. From
+# the decompressed data, we extract the two header components: the object type
+# and its size. From the type, we determine the actual class to use. We convert
+# the size to a Python integer, and check if it matches. Then we just call the
+# correct constructor for that object’s format.
+def object_read(repo, sha):
+    """Read object object_id from Git repository. Return a GitObject whose
+    exact type depends on the object."""
+
+    # Get object's path
+    path = repo_file(repo, "objects", sha[0:2], sha[2:])
+
+    with open(path, "rb") as f:
+        # Decompress binary file
+        raw = zlib.decompress(f.read())
+
+        # Read object type
+        x = raw.find(b' ')
+        fmt = raw[0:x]
+
+        # Read and validate object size
+        y = raw.find(b'\x00', x)
+        size = int(raw[x:y].decode("ascii"))
+        if size != len(raw) - y - 1:
+            raise Exception("Malformed object {0}: bad length".format(sha))
+
+        # Pick constructor
+        if   fmt == b'commit'  : c = GitCommit
+        elif fmt == b'tree'    : c = GitTree
+        elif fmt == b'tag'     : c = GitTag
+        elif fmt == b'blob'    : c = GitBlob
+        else:
+            raise Exception("Unknown type %s for object %s".format(fmt.decode("ascii"), sha))
+
+        # Call constructor and return object
+        return c(repo, raw[y+1:])
+
+# Placeholder function to find an object. Currently objects can only be found by
+# its full hash, but a full implementation will allow objects to be found by
+# other references like short hashes and tags.
+def object_find(repo, name, fmt=None, follow=True):
+    return name
